@@ -1,0 +1,35 @@
+  function hasResponse(q,practice){const r=practice?state.practiceResponse:state.response;if(q.type==='mc')return r!==null&&r!==undefined;if(q.type==='short')return normalizeText(r).length>0;if(q.type==='dropdown')return Array.isArray(r)&&r.length===q.blanks.length&&r.every(Boolean);if(q.type==='categorize')return r&&Object.keys(r).length===q.items.length;return false}
+  function updateActionState(q,practice){const has=hasResponse(q,practice),submit=document.getElementById('submitBtn'),practiceBtn=document.getElementById('practiceBtn');if(submit)submit.disabled=!has;if(practiceBtn&&!practice)practiceBtn.disabled=!has}
+
+  function isCorrect(q,r){
+    if(q.type==='mc')return String(r)===String(q.correct);
+    if(q.type==='short'){const a=Number(normalizeText(r)),b=Number(q.answer);if(Number.isFinite(a)&&Number.isFinite(b))return Math.abs(a-b)<1e-9;return normalizeText(r)===normalizeText(q.answer)}
+    if(q.type==='dropdown')return q.blanks.every((b,i)=>String(r[i])===String(b.correct));
+    if(q.type==='categorize')return q.items.every(it=>r[it.id]===q.correctMap[it.id]);
+    return false;
+  }
+
+  function practiceFeedback(q){const ok=isCorrect(q,state.practiceResponse);return `<div class="feedback ${ok?'good':'bad'}"><strong>${ok?'Correct':'Not quite'}</strong><div>${ok?'You solved this lookalike correctly.':'Open Teach Me to review the exact solution, or try another lookalike.'}</div></div>`}
+  function checkPractice(){state.practiceChecked=true;renderExam();const btn=document.getElementById('submitBtn');if(btn){btn.textContent='Return to Test';btn.disabled=false;btn.onclick=()=>{state.practice=null;state.practiceResponse=null;state.practiceChecked=false;renderExam()}}}
+
+  function submitMain(){
+    const ok=isCorrect(state.current,state.response);if(ok)state.score++;
+    state.answers.push({id:state.current.id,archetype:state.current.archetype,correct:ok,response:state.response});
+    state.questionIndex++;
+    if(state.questionIndex>=state.totalQuestions){finishTest(false);return}
+    loadMainQuestion();
+  }
+
+  function openTeach(q){
+    const modal=document.createElement('div');modal.className='modal-backdrop';modal.innerHTML=`<section class="modal" role="dialog" aria-modal="true"><div class="modal-head"><div><div class="question-badge">TEACH ME</div><h2>How to solve this problem</h2></div><button class="modal-close" aria-label="Close">×</button></div><div class="teach-body">${q.explanation}</div></section>`;document.body.appendChild(modal);modal.querySelector('.modal-close').onclick=()=>modal.remove();modal.onclick=e=>{if(e.target===modal)modal.remove()};
+  }
+
+  function finishTest(timeExpired=false){
+    stopTimer();
+    const pctScore=state.totalQuestions?Math.round(state.score/state.totalQuestions*100):0;
+    app.innerHTML=`<main class="complete-shell"><section class="complete-card"><div class="success-icon">✓</div><h1>${timeExpired?'Time is up':'You’ve finished the Math test'}</h1><p>${state.setup.name ? h(state.setup.name)+', your ' : 'Your '}session is complete.</p><div class="score-big">${state.score}/${state.totalQuestions}</div><p>${pctScore}% correct</p><ul class="complete-list"><li>Your answer history for this session has been recorded locally.</li><li>Seen question variants remain marked so future tests favor new problems.</li><li>You can begin another test with a different or random interface.</li></ul><button id="againBtn" class="primary-btn">Start Another Math Test</button></section></main>`;
+    document.getElementById('againBtn').onclick=renderStart;
+  }
+
+  renderStart();
+})();
