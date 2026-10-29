@@ -1,0 +1,40 @@
+  }
+
+  function beginTest(){
+    state.totalQuestions=50*state.setup.multiplier;state.questionIndex=0;state.score=0;state.answers=[];state.queue=buildQueue(state.totalQuestions);state.timerSeconds=10800;state.practice=null;state.practiceChecked=false;
+    const selected=state.setup.theme==='random'?pick(THEMES):state.setup.theme;setTheme(selected);loadMainQuestion();startTimer();
+  }
+
+  function loadMainQuestion(){
+    state.response=null;state.practice=null;state.practiceChecked=false;
+    const slot=state.queue[state.questionIndex];state.current=freshQuestion(slot.g);renderExam();
+  }
+
+  function progressPct(){return Math.round(((state.questionIndex+1)/state.totalQuestions)*100)}
+
+  function renderExam(){
+    const q=state.practice||state.current;
+    const practice=!!state.practice;
+    app.innerHTML=`<main class="exam">
+      <header class="exam-header"><div class="exam-head-row"><div class="section-name">MATH Section</div><div class="timer ${state.setup.timed?'':'untimed'}"><div class="timer-label">${state.setup.timed?'TIME REMAINING':'PRACTICE MODE'}</div><div id="timerValue" class="timer-value">${state.setup.timed?formatTime(state.timerSeconds):'Untimed'}</div></div></div>
+      <div class="progress-wrap"><div class="progress-meta"><span><b>MATH</b> · Question ${state.questionIndex+1} of ${state.totalQuestions}${practice?' · Practice':''}</span><div class="progress-track"><div class="progress-fill" style="width:${progressPct()}%"></div></div><span>${progressPct()}%</span></div></div></header>
+      <section class="question-zone"><div class="question-pane">${practice?'<div class="question-badge">PRACTICE THIS MORE</div>':''}<div class="question-stem">${q.prompt}</div>${q.stimulus?`<div class="stimulus">${q.stimulus}</div>`:''}</div><div class="divider"></div><div class="answer-pane">${renderAnswer(q,practice)}</div></section>
+      <footer class="action-bar"><div class="action-inner">
+        <button id="teachBtn" class="ghost-btn">Teach Me</button>
+        <button id="practiceBtn" class="secondary-btn" ${practice?'':'disabled'}>${practice?'Another Like This':'Practice This More'}</button>
+        <button id="submitBtn" class="primary-btn submit" disabled>${practice?'Check Practice Answer':'Submit Answer'}</button>
+      </div></footer>
+    </main>`;
+    bindAnswer(q,practice);
+    document.getElementById('teachBtn').onclick=()=>openTeach(q);
+    document.getElementById('practiceBtn').onclick=()=>{
+      if(practice){state.practice=freshQuestion(generators[state.queue[state.questionIndex].idx]);state.practiceResponse=null;state.practiceChecked=false;renderExam();}
+      else if(hasResponse(q,false)){state.practice=freshQuestion(generators[state.queue[state.questionIndex].idx]);state.practiceResponse=null;state.practiceChecked=false;renderExam();}
+    };
+    document.getElementById('submitBtn').onclick=()=>practice?checkPractice():submitMain();
+  }
+
+  function renderAnswer(q,practice){
+    const response=practice?state.practiceResponse:state.response;
+    if(q.type==='mc')return `<div class="choice-list">${q.options.map((o,i)=>`<button class="choice ${response===o.value?'selected':''}" data-value="${h(o.value)}"><span class="choice-letter">${LETTERS[i]}.</span><span class="choice-content">${o.html}</span></button>`).join('')}</div>${practice&&state.practiceChecked?practiceFeedback(q):''}`;
+    if(q.type==='short')return `<input id="shortAnswer" class="short-input" maxlength="10" placeholder="Enter your answer (max 10 characters)" value="${h(response||'')}">${practice&&state.practiceChecked?practiceFeedback(q):''}`;
