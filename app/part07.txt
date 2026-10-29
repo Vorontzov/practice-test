@@ -1,0 +1,40 @@
+      state.timerSeconds--;
+      if(state.timerSeconds<0){
+        if(state.setup.multiplier>1) state.timerSeconds=10800;
+        else { state.timerSeconds=0; finishTest(true); return; }
+      }
+      const el=document.getElementById('timerValue');if(el)el.textContent=formatTime(state.timerSeconds);
+    },1000);
+  }
+  function stopTimer(){if(state.timerHandle){clearInterval(state.timerHandle);state.timerHandle=null}}
+
+  function renderStart(){
+    stopTimer();
+    const saved=JSON.parse(localStorage.getItem(STORAGE.profile)||'{}');
+    state.setup.name=saved.name||'';state.setup.email=saved.email||'';
+    setTheme('reference');
+    app.innerHTML=`<main class="app-start-shell"><div class="start-wrap">
+      <div class="start-icon">✓</div>
+      <h1 class="start-title">Start Your SHSAT Practice Test</h1>
+      <p class="start-sub">Please provide your information to begin the test</p>
+      <section class="start-card">
+        <div class="field"><label for="name">Full Name</label><input id="name" value="${h(state.setup.name)}" autocomplete="name"></div>
+        <div class="field"><label for="email">Email Address</label><input id="email" type="email" value="${h(state.setup.email)}" autocomplete="email"><div class="helper">Your results are stored locally in this prototype.</div></div>
+        <div class="info-box"><div>ⓘ</div><div><strong>Test Information</strong><ul><li>50 Math questions per test</li><li>Questions appear in a fresh randomized order</li><li>Use Teach Me or Practice This More whenever you need them</li><li>Previously seen variants are avoided across sessions</li></ul></div></div>
+        <div class="group-title">How much practice would you like?</div>
+        <div class="segmented seg-5" id="lengthSeg">${[1,2,3,4,5].map(n=>`<button type="button" data-mult="${n}" class="${n===1?'active':''}">${n===1?'Single':n+'×'}</button>`).join('')}</div>
+        <div class="setup-grid">
+          <div><div class="group-title">Timing</div><div class="segmented seg-2" id="timingSeg"><button class="active" data-timed="1">Timed</button><button data-timed="0">Untimed</button></div></div>
+          <div><div class="group-title">Interface Style</div><select id="themeSelect" style="width:100%;height:46px;border:1px solid #d9e0ea;border-radius:8px;padding:0 12px"><option value="reference">SHSAT Reference</option><option value="compact">Compact Test Center</option><option value="minimal">Minimal Exam</option><option value="contrast">High Contrast</option><option value="institutional">Institutional / Legacy</option><option value="random">Random Interface</option></select></div>
+        </div>
+        <div class="start-actions"><button id="startBtn" class="primary-btn">Start Math Test</button></div>
+      </section>
+    </div></main>`;
+    document.querySelectorAll('#lengthSeg button').forEach(btn=>btn.onclick=()=>{state.setup.multiplier=+btn.dataset.mult;document.querySelectorAll('#lengthSeg button').forEach(x=>x.classList.toggle('active',x===btn))});
+    document.querySelectorAll('#timingSeg button').forEach(btn=>btn.onclick=()=>{state.setup.timed=btn.dataset.timed==='1';document.querySelectorAll('#timingSeg button').forEach(x=>x.classList.toggle('active',x===btn))});
+    document.getElementById('startBtn').onclick=()=>{
+      const name=document.getElementById('name').value.trim(),email=document.getElementById('email').value.trim();
+      if(!name||!email||!/^\S+@\S+\.\S+$/.test(email)){alert('Please enter your name and a valid email address.');return}
+      state.setup.name=name;state.setup.email=email;state.setup.theme=document.getElementById('themeSelect').value;
+      localStorage.setItem(STORAGE.profile,JSON.stringify({name,email}));beginTest();
+    };
