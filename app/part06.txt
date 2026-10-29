@@ -1,0 +1,40 @@
+    {html:`${rnd(3,10)}² − ${rnd(2,12)}`,calc:null},
+    {html:`${rnd(3,9)} × ${rnd(2,7)} + ${rnd(1,5)}`,calc:null},
+    {html:`${rnd(2,5)}(${rnd(2,6)} + ${rnd(2,6)}) − ${rnd(1,7)}`,calc:null}
+  ];
+    const evalExpr=(s)=>{const plain=s.replace('²','**2').replace(/(\d+)\((\d+) \+ (\d+)\)/,'$1*($2+$3)').replace(/×/g,'*').replace(/−/g,'-');return Function(`return (${plain})`)()};
+    const items=exprs.map((e,i)=>({id:`e${i}`,html:e.html})),correctMap={};exprs.forEach((e,i)=>{e.calc=evalExpr(e.html);correctMap[`e${i}`]=e.calc%2===0?'even':'odd'});return makeCategorize('even-odd',{exprs:exprs.map(e=>e.html)},`<p>Determine which expressions result in an even number. Drag the expressions into the appropriate boxes.</p>`,items,[{id:'even',label:'Even Results'},{id:'odd',label:'Odd Results'}],correctMap,explain('Simplify first, classify second',[`Follow order of operations for each expression. Then check the final digit: 0, 2, 4, 6, 8 are even; 1, 3, 5, 7, 9 are odd.`],`Do not decide even/odd until the entire expression has been simplified.`));}
+
+  // 49 consecutive integers
+  function q49(){const count=pick([3,5,7,9,11]),middle=rnd(5,500),sum=count*middle,ans=middle+(count-1)/2;const opts=mcNumericOptions(ans,[middle,ans-1,ans+2]);return makeMC('consecutive-integers',{count,middle},`<p>The sum of ${count} consecutive integers is ${sum}. What is the largest of these integers?</p>`,opts,ans,explain('The average is the middle integer',[`${sum} ÷ ${count} = ${middle}, so ${middle} is the middle integer.`,`There are ${(count-1)/2} integers above it, so the largest is ${middle} + ${(count-1)/2} = <strong>${ans}</strong>.`],`For an odd number of consecutive integers, sum ÷ count gives the middle value.`));}
+
+  // 50 fraction equation 1/x + 1/a = 1/b
+  function q50(){let b,d,a,x;do{b=rnd(2,200);const divs=[];for(let i=1;i<=b*b;i++)if((b*b)%i===0)divs.push(i);d=pick(divs);a=b+d;x=b+(b*b)/d}while(a>1000||x>1000);const correct=String(x),opts=mcNumericOptions(x,[a+b,Math.abs(a-b),Math.max(1,b)]);return makeMC('fraction-equation',{a,b},`<p>If <span class="math">${fracHtml(1,'x')} + ${fracHtml(1,a)} = ${fracHtml(1,b)}</span>, what is the value of <span class="math">x</span>?</p>`,opts,correct,explain('Isolate the fraction containing x',[`${fracHtml(1,'x')} = ${fracHtml(1,b)} − ${fracHtml(1,a)} = ${fracHtml(a-b,a*b)}.`,`So x = <strong>${x}</strong>.`],`Once 1/x is isolated, simplify the fraction and invert it.`));}
+
+  const generators=[q1,q2,q3,q4,q5,q6,q7,q8,q9,q10,q11,q12,q13,q14,q15,q16,q17,q18,q19,q20,q21,q22,q23,q24,q25,q26,q27,q28,q29,q30,q31,q32,q33,q34,q35,q36,q37,q38,q39,q40,q41,q42,q43,q44,q45,q46,q47,q48,q49,q50];
+
+  function freshQuestion(generator){
+    let q=null;
+    for(let i=0;i<5000;i++){
+      q=generator();
+      if(!isSeen(q.id)){ markSeen(q.id); return q; }
+    }
+    // Extremely unlikely with parametric generators. If a local archetype saturates, allow a fresh random draw.
+    q=generator(); markSeen(q.id); return q;
+  }
+
+  function buildQueue(total){
+    const cycles=Math.ceil(total/50),q=[];
+    for(let c=0;c<cycles;c++) q.push(...shuffle(generators.map((g,i)=>({g,idx:i}))));
+    return q.slice(0,total);
+  }
+
+  function formatTime(sec){
+    const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;
+    return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+  function startTimer(){
+    stopTimer();
+    if(!state.setup.timed)return;
+    state.timerHandle=setInterval(()=>{
