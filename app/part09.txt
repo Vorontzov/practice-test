@@ -1,0 +1,40 @@
+    if(q.type==='dropdown')return `<div class="blank-stack">${q.blanks.map((b,i)=>`<div class="blank"><label>${h(b.label)}</label><select data-blank="${i}"><option value="">Choose...</option>${b.options.map(o=>`<option value="${h(o.value)}" ${(response&&response[i]===o.value)?'selected':''}>${String(o.html).replace(/<[^>]+>/g,'')}</option>`).join('')}</select></div>`).join('')}</div>${practice&&state.practiceChecked?practiceFeedback(q):''}`;
+    if(q.type==='categorize'){
+      const placements=response||{};
+      const placedIds=new Set(Object.keys(placements));
+      const unplaced=q.items.filter(it=>!placedIds.has(it.id));
+      return `<div class="cat-help">Tap an item, then tap the category to place it. Dragging also works.</div><div id="tokenPool" class="token-pool">${unplaced.map(it=>tokenHtml(it)).join('')}</div><div class="category-grid">${q.categories.map(c=>`<div class="category-card" data-cat="${c.id}"><h4>${c.label}</h4><div class="category-drop">${q.items.filter(it=>placements[it.id]===c.id).map(it=>tokenHtml(it)).join('')}</div></div>`).join('')}</div>${practice&&state.practiceChecked?practiceFeedback(q):''}`;
+    }
+    return '';
+  }
+
+  function tokenHtml(it){return `<button class="token" draggable="true" data-token="${it.id}">${it.html}</button>`}
+
+  function bindAnswer(q,practice){
+    const get=()=>practice?state.practiceResponse:state.response;
+    const set=(v)=>{if(practice)state.practiceResponse=v;else state.response=v;updateActionState(q,practice)};
+    if(q.type==='mc')document.querySelectorAll('.choice').forEach(btn=>btn.onclick=()=>{set(btn.dataset.value);document.querySelectorAll('.choice').forEach(x=>x.classList.toggle('selected',x===btn))});
+    if(q.type==='short'){const el=document.getElementById('shortAnswer');el.oninput=()=>set(el.value)}
+    if(q.type==='dropdown')document.querySelectorAll('[data-blank]').forEach(sel=>sel.onchange=()=>{const arr=Array.isArray(get())?[...get()]:Array(q.blanks.length).fill('');arr[+sel.dataset.blank]=sel.value;set(arr)});
+    if(q.type==='categorize')bindCategorize(q,practice,set,get);
+    updateActionState(q,practice);
+  }
+
+  function bindCategorize(q,practice,set,get){
+    let selectedToken=null,dragToken=null;
+    const refreshSelected=()=>document.querySelectorAll('.token').forEach(t=>t.classList.toggle('selected',t.dataset.token===selectedToken));
+    document.querySelectorAll('.token').forEach(t=>{
+      t.onclick=(e)=>{e.stopPropagation();selectedToken=t.dataset.token;refreshSelected()};
+      t.ondragstart=()=>{dragToken=t.dataset.token};
+    });
+    document.querySelectorAll('.category-card').forEach(card=>{
+      const place=(tokenId)=>{if(!tokenId)return;const p={...(get()||{})};p[tokenId]=card.dataset.cat;set(p);selectedToken=null;renderExam()};
+      card.onclick=()=>place(selectedToken);
+      card.ondragover=(e)=>{e.preventDefault();card.classList.add('over')};
+      card.ondragleave=()=>card.classList.remove('over');
+      card.ondrop=(e)=>{e.preventDefault();place(dragToken)};
+    });
+    const pool=document.getElementById('tokenPool');
+    if(pool){pool.onclick=()=>{if(!selectedToken)return;const p={...(get()||{})};delete p[selectedToken];set(p);selectedToken=null;renderExam()};pool.ondragover=e=>e.preventDefault();pool.ondrop=e=>{e.preventDefault();if(!dragToken)return;const p={...(get()||{})};delete p[dragToken];set(p);renderExam()}}
+  }
+
