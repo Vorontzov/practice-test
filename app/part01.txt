@@ -1,0 +1,40 @@
+  const lcm=(a,b)=>Math.abs(a*b)/gcd(a,b);
+  const comb=(n,k)=>{if(k<0||k>n)return 0;k=Math.min(k,n-k);let r=1;for(let i=1;i<=k;i++)r=r*(n-k+i)/i;return Math.round(r)};
+  const fracObj=(n,d=1)=>{ if(d===0) return {n,d}; const g=gcd(n,d); d/=g;n/=g;if(d<0){d=-d;n=-n} return {n,d}; };
+  const fracKey=(n,d=1)=>{const f=fracObj(n,d);return `${f.n}/${f.d}`};
+  const fracHtml=(n,d=1)=>{if(!Number.isFinite(Number(n))||!Number.isFinite(Number(d)))return `<span class="frac math"><span class="top">${n}</span><span class="bottom">${d}</span></span>`;const f=fracObj(Number(n),Number(d)); if(f.d===1)return `${f.n}`;return `<span class="frac math"><span class="top">${f.n}</span><span class="bottom">${f.d}</span></span>`};
+  const mixedHtmlFromQuarters=(q)=>{const sign=q<0?'-':'';q=Math.abs(q);const whole=Math.floor(q/4), rem=q%4;if(rem===0)return sign+whole;const f=fracObj(rem,4);if(whole===0)return sign+fracHtml(f.n,f.d);return `<span class="mixed">${sign}${whole} ${fracHtml(f.n,f.d)}</span>`};
+  const money=(n)=>`$${Number(n).toFixed(Number.isInteger(n)?0:2)}`;
+  const pct=(n)=>`${Number(n.toFixed(2)).toString()}%`;
+  const hash=(str)=>{let x=2166136261;for(let i=0;i<str.length;i++){x^=str.charCodeAt(i);x=Math.imul(x,16777619)}return (x>>>0).toString(36)};
+  const idFor=(type, params)=>`${type}-${hash(JSON.stringify(params))}`;
+  const seenSet=()=>new Set(JSON.parse(localStorage.getItem(STORAGE.seen)||'[]'));
+  const markSeen=(id)=>{const s=seenSet();s.add(id);localStorage.setItem(STORAGE.seen,JSON.stringify([...s]));};
+  const isSeen=(id)=>seenSet().has(id);
+  const normalizeText=(v)=>String(v??'').trim().toLowerCase().replace(/,/g,'').replace(/\s+/g,' ');
+
+  function setTheme(theme){
+    state.theme = theme;
+    document.body.dataset.theme = theme;
+    document.body.className = theme;
+    localStorage.setItem(STORAGE.lastTheme,theme);
+  }
+
+  function makeMC(type, params, prompt, options, correctValue, explanation, extra={}){
+    const shuffled=shuffle(options.map(o=>typeof o==='object'?o:{value:String(o),html:h(o)}));
+    return {id:idFor(type,params),archetype:type,type:'mc',prompt,options:shuffled,correct:String(correctValue),explanation,...extra};
+  }
+  function makeShort(type,params,prompt,answer,explanation,extra={}){
+    return {id:idFor(type,params),archetype:type,type:'short',prompt,answer:String(answer),explanation,...extra};
+  }
+  function makeDropdown(type,params,prompt,blanks,explanation,extra={}){
+    return {id:idFor(type,params),archetype:type,type:'dropdown',prompt,blanks,explanation,...extra};
+  }
+  function makeCategorize(type,params,prompt,items,categories,correctMap,explanation,extra={}){
+    return {id:idFor(type,params),archetype:type,type:'categorize',prompt,items:shuffle(items),categories,correctMap,explanation,...extra};
+  }
+
+  function mcNumericOptions(correct, distractors, format=(x)=>String(x)){
+    const vals=[correct,...distractors].filter((v,i,a)=>a.findIndex(x=>String(x)===String(v))===i).slice(0,4);
+    while(vals.length<4) vals.push(correct+vals.length+1);
+    return vals.map(v=>({value:String(v),html:format(v)}));
